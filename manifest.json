@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "EVE Gatecheck Linker",
+  "version": "1.0",
+  "description": "Finds static HS systems and opens gatecheck link.",
+  "permissions": ["scripting", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Run EVE Gatecheck"
+  }
+}
