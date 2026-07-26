@@ -1,1 +1,5 @@
 node_modules/
+
+# Per-machine Claude Code settings. Holds local filesystem paths, so it must
+# never be committed — do not rely on a global gitignore to catch it.
+.claude/settings.local.json

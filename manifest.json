@@ -1,10 +1,9 @@
 {
   "manifest_version": 3,
   "name": "EVE Gatecheck Linker",
-  "version": "2.2.1",
+  "version": "2.3",
   "description": "Opens an EVE Gatecheck route to your chosen trade hub for the system selected on your Aperture map.",
-  "permissions": ["scripting", "tabs", "notifications", "storage"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": ["activeTab", "scripting", "notifications", "storage"],
   "background": {
     "service_worker": "background.js"
   },

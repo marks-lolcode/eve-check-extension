@@ -1,5 +1,5 @@
 /* ========================================================================
-   File: background.js — v2.2.1 — Last updated 2026-07-26
+   File: background.js — v2.3 — Last updated 2026-07-26
    Purpose:
      1) On toolbar click, inject a scanner into the active tab that reads the
         currently-selected system out of Aperture's Inspector panel.
@@ -17,7 +17,15 @@
    Notes:
      - chrome.tabs.create() requires the property name "url". Using any other
        key throws "Unexpected property".
-     - Requires "scripting", "tabs", "notifications" and "storage" permissions.
+     - Requires "activeTab", "scripting", "notifications" and "storage".
+       "activeTab" grants host access to the clicked tab only, and only for
+       that invocation — which is exactly this extension's shape, since every
+       injection follows a toolbar click. It replaces "<all_urls>", so Chrome
+       no longer warns that this extension can read every site you visit.
+     - chrome.tabs.create() does NOT require the "tabs" permission; that one
+       only unlocks sensitive tab fields (url, title, favIconUrl), which we
+       never read. Adding it back would warn about browsing history for
+       nothing.
      - Service worker logs: chrome://extensions/ → this extension → "service worker".
    ======================================================================== */
 

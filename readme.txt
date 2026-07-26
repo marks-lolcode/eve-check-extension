@@ -1,6 +1,6 @@
 ReadMe:
 
-EVE Gatecheck Linker — v2.2.1 — Last updated 2026-07-26
+EVE Gatecheck Linker — v2.3 — Last updated 2026-07-26
 
 This extension uses Aperture to open EVE Gatecamp Check for a system, routed to
 the trade hub of your choice (Jita by default).

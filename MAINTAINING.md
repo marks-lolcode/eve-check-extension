@@ -1,6 +1,6 @@
 # Maintaining EVE Gatecheck Linker
 
-`MAINTAINING.md` — v1.2 — Last updated 2026-07-26
+`MAINTAINING.md` — v1.3 — Last updated 2026-07-26
 
 For anyone changing this extension. End-user install/usage lives in `readme.txt`.
 
@@ -42,6 +42,31 @@ it and runs it in the page. **It therefore cannot close over anything** — no
 imports, no outer constants, no helpers. It must stay entirely self-contained.
 `getDestination()` is used by `openGatecheck`, which runs in the service worker,
 not in the page.
+
+## Permissions
+
+Four, and each one is load-bearing. Keep it that way — every addition changes
+the warning Chrome shows on install, and users judge an extension by it.
+
+| Permission | Why | Warning it costs |
+|---|---|---|
+| `activeTab` | Host access to the clicked tab, granted on toolbar click and only for that invocation | None |
+| `scripting` | `executeScript` to inject the scanner | None on its own |
+| `notifications` | The error messages — the only feedback channel this extension has | "Display notifications" |
+| `storage` | The destination hub | None |
+
+**Do not go back to `host_permissions: ["<all_urls>"]`.** That is what v2.2.1
+shipped, and it made Chrome warn "Read and change all your data on all
+websites" — a hard sell for a tool that only ever touches the tab you clicked.
+`activeTab` fits because injection *always* follows a click; there is no
+background scanning to support.
+
+**Do not add `tabs` back either.** `chrome.tabs.create()` works without it. The
+`tabs` permission only unlocks sensitive fields (`url`, `title`, `favIconUrl`),
+none of which this extension reads, and it costs a browsing-history warning.
+
+If a future feature needs to read a tab's URL, or to scan without a click, both
+of these stop being true — price that in before you build it.
 
 ## The destination setting
 
