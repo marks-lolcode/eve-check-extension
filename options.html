@@ -1,0 +1,33 @@
+<!doctype html>
+<!-- options.html — v1.0 — Last updated 2026-07-26 -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>EVE Gatecheck Linker — Options</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <h1>EVE Gatecheck Linker</h1>
+
+      <label for="destination">Route destination</label>
+      <select id="destination">
+        <option value="Jita">Jita</option>
+        <option value="Amarr">Amarr</option>
+        <option value="Dodixie">Dodixie</option>
+        <option value="Hek">Hek</option>
+        <option value="Rens">Rens</option>
+      </select>
+
+      <p class="hint">
+        The selected system is routed to this hub. Defaults to Jita.
+      </p>
+
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </main>
+
+    <!-- WHY a separate file: extension pages run under a CSP that blocks
+         inline script. -->
+    <script src="options.js"></script>
+  </body>
+</html>

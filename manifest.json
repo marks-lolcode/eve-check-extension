@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "EVE Gatecheck Linker",
+  "version": "2.2.1",
+  "description": "Opens an EVE Gatecheck route to your chosen trade hub for the system selected on your Aperture map.",
+  "permissions": ["scripting", "tabs", "notifications", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  },
+  "action": {
+    "default_title": "Run EVE Gatecheck",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "32": "assets/icon32.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  }
+}

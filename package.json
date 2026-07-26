@@ -1,0 +1,13 @@
+{
+  "name": "eve-check-extension",
+  "version": "2.2.1",
+  "description": "Chrome extension: opens EVE Gatecheck for the system selected on your Aperture map.",
+  "private": true,
+  "scripts": {
+    "test": "node tests/scanner.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  },
+  "license": "MIT"
+}
