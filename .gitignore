@@ -3,3 +3,24 @@ node_modules/
 # Per-machine Claude Code settings. Holds local filesystem paths, so it must
 # never be committed — do not rely on a global gitignore to catch it.
 .claude/settings.local.json
+
+# OS and editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+**/desktop.ini
+*.swp
+*.swo
+*~
+
+# Credentials - never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+client_secret*.json
+credentials.json
+*service-account*.json
+secrets.json
