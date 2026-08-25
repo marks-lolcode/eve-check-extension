@@ -1,10 +1,14 @@
 /* ========================================================================
-   File: background.js — v2.3 — Last updated 2026-07-26
+   File: background.js — v2.5 — Last updated 2026-08-25
    Purpose:
      1) On toolbar click, inject a scanner into the active tab that reads the
         currently-selected system out of Aperture's Inspector panel.
-     2) Open an EVE Gatecheck tab routing that system to the destination hub
-        chosen on the options page (default Jita).
+     2) K-space: open an EVE Gatecheck tab routing that system to the
+        destination hub chosen on the options page (default Jita).
+     3) J-space: open a k162 tab for that system instead. Wormhole systems have
+        no gates, so a Gatecheck route is meaningless for them. k162 keys on the
+        EVE solar system id, which the Inspector does not render — it comes from
+        the Intel panel's outbound links. See MAINTAINING.md.
    Why the Inspector, and not the map node:
      - Aperture's map node shows the system's ALIAS. Setting an alias replaces
        the real name in the node entirely, and the real name then appears
@@ -48,8 +52,8 @@ async function getDestination() {
 
 /**
  * Runs in the page. Reads the selected system's real name from Aperture's
- * Inspector panel. Returns { name } on success, or { error } describing which
- * failure case was hit.
+ * Inspector panel. Returns { name } for a k-space system, { name, systemId }
+ * for a J-space one, or { error } describing which failure case was hit.
  */
 function readSelectedSystem() {
   // WHY: anchor on the panel's hide button — its aria-label is stable, while
@@ -72,14 +76,38 @@ function readSelectedSystem() {
   const name = aliasInput?.placeholder?.trim();
 
   if (name) {
+    // WHAT: wormhole systems route to k162, not Gatecheck — J-codes (ordinary
+    // wormholes and drifter systems) plus Thera, which is J-space with a
+    // hand-given name rather than a J-code. Both are gateless, so Gatecheck has
+    // nothing to route.
+    // WHY here and not in the service worker: the solar system id lives in the
+    // page, and this function is the only code that ever touches the page.
+    if (/^J\d{6}$/.test(name) || name === 'Thera') {
+      const intel = document
+        .querySelector('button[aria-label="Hide Intel"]')
+        ?.closest('.react-grid-item');
+
+      // WHY the hrefs: the Intel panel renders region, constellation and
+      // security as text, but never the solar system id — it appears only
+      // inside its outbound links (zKill's path, EVEEYE's query string).
+      // Aperture's own data-id is a row id and cannot be used here.
+      const match = [...(intel?.querySelectorAll('a') ?? [])]
+        .map((a) => a.href.match(/zkillboard\.com\/system\/(\d+)/) || a.href.match(/[?&]system=(\d+)/))
+        .find(Boolean);
+
+      return match ? { name, systemId: match[1] } : { error: 'no-intel' };
+    }
+
     return { name };
   }
 
-  // WHY no fallback to the panel's card-title: it renders the ALIAS for an
-  // aliased system, and renders a connection/note heading for those selections.
-  // Either would hand back a name that is not a system, and we would open a
-  // bogus route rather than saying so. The Alias placeholder is the only field
-  // that is defined to hold the real name, so its absence is a hard failure.
+  // WHY no fallback to the panel's card-title: it renders a connection/note
+  // heading for those selections, and nothing defines it as a name field — at
+  // rc.14 it held the real name for an aliased system, but that is incidental,
+  // not a contract. Either way it can hand back a name that is not a system,
+  // and we would open a bogus route rather than saying so. The Alias
+  // placeholder is the only field defined to hold the real name, so its
+  // absence is a hard failure.
   const empty = panel.textContent.includes('Select a system, connection, or note');
   return { error: empty ? 'no-selection' : 'not-a-system' };
 }
@@ -88,7 +116,9 @@ const ERROR_MESSAGES = {
   'no-panel':
     "Aperture's Inspector panel is hidden. Show it in Aperture via Panels -> Inspector, then select a system.",
   'no-selection': 'No system selected. Click a system on the map, then try again.',
-  'not-a-system': 'That selection is not a system. Click a system on the map, then try again.'
+  'not-a-system': 'That selection is not a system. Click a system on the map, then try again.',
+  'no-intel':
+    "Wormhole systems need Aperture's Intel panel — it carries the system id k162 needs. Show it in Aperture via Panels -> Intel, then try again."
 };
 
 function notify(message) {
@@ -105,12 +135,20 @@ async function openGatecheck(systemName) {
   const destination = await getDestination();
   const gatecheckUrl = `https://eve-gatecheck.space/eve/#${system}:${destination}:shortest`;
 
-  console.log('[background] Opening Gatecheck:', gatecheckUrl);
-  chrome.tabs.create({ url: gatecheckUrl }, (tab) => {
+  openTab(gatecheckUrl, 'Gatecheck');
+}
+
+function openK162(systemId) {
+  openTab(`https://k-162.space/?system=${encodeURIComponent(systemId)}`, 'k162');
+}
+
+function openTab(url, label) {
+  console.log(`[background] Opening ${label}:`, url);
+  chrome.tabs.create({ url }, (tab) => {
     if (chrome.runtime.lastError) {
-      console.error('[background] tabs.create (Gatecheck) error:', chrome.runtime.lastError);
+      console.error(`[background] tabs.create (${label}) error:`, chrome.runtime.lastError);
     } else {
-      console.log('[background] Gatecheck tab created with id:', tab?.id);
+      console.log(`[background] ${label} tab created with id:`, tab?.id);
     }
   });
 }
@@ -133,6 +171,11 @@ chrome.action.onClicked.addListener((tab) => {
 
         const result = results?.[0]?.result;
         console.log('[background] Scanner returned:', result);
+
+        if (result?.systemId) {
+          openK162(result.systemId);
+          return;
+        }
 
         if (result?.name) {
           openGatecheck(result.name);

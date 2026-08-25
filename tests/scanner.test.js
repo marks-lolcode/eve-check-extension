@@ -1,4 +1,4 @@
-// tests/scanner.test.js — v1.1 — Last updated 2026-07-26
+// tests/scanner.test.js — v1.3 — Last updated 2026-08-25
 //
 // Tests readSelectedSystem() from background.js against fixtures rebuilt from
 // real Aperture v1.0.0-rc.14 DOM dumps.
@@ -105,6 +105,31 @@ const inspectorConnection = `
   </div>
 </div>`;
 
+// The Intel panel, which is where the EVE solar system id comes from for J-space.
+// Note it renders the id ONLY inside hrefs — the visible text has region,
+// constellation and security, but no id. Both link shapes are here because the
+// scanner accepts either.
+const intelPanel = (systemId, systemName) => `
+<div class="react-grid-item">
+  <div class="ap-panel-drag">
+    <div class="nodrag ml-auto flex items-center gap-1">
+      <button type="button" data-slot="button" aria-label="Hide Intel"></button>
+    </div>
+  </div>
+  <div data-slot="card">
+    <div data-slot="card-content">
+      <dl><dt>Region</dt><dd>B-R00004</dd><dt>Const.</dt><dd>B-C00023</dd><dt>Security</dt><dd><span>-1.0</span></dd></dl>
+      <p>No sovereignty data.</p>
+      <div>
+        <a href="https://evemaps.dotlan.net/map/B-R00004/${systemName}">DOTLAN</a>
+        <a href="https://eveeye.com/?system=${systemId}">EVEEYE</a>
+        <a href="https://anoik.is/systems/${systemName}">Anoik</a>
+        <a href="https://zkillboard.com/system/${systemId}/">zKill</a>
+      </div>
+    </div>
+  </div>
+</div>`;
+
 // Real panels that also contain placeholder inputs, rendered BEFORE the Inspector
 // just as they are on the real page. Without scoping, a bare input[placeholder]
 // query returns "Start system…" instead of the system name.
@@ -157,11 +182,67 @@ run(
 
 // WHY a second aliased case: J-code names look nothing like the k-space name
 // above, and an alias hides that difference completely. This is the shape the
-// scanner will meet most often in wormhole space.
+// scanner will meet most often in wormhole space. J-space also carries a
+// systemId, since it routes to k162 rather than Gatecheck.
 run(
-  'J-code system aliased "Backdoor" -> returns J123456',
-  decoyPanels + inspectorWith('Backdoor', 'J123456', 'Backdoor'),
-  { name: 'J123456' }
+  'J-code system aliased "Backdoor" -> returns J123456 + system id',
+  decoyPanels + inspectorWith('Backdoor', 'J123456', 'Backdoor') + intelPanel('31000376', 'J123456'),
+  { name: 'J123456', systemId: '31000376' }
+);
+
+// Thera is J-space with a name instead of a J-code, and it is gateless like any
+// other wormhole — so it must take the k162 path despite failing the J-code regex.
+run(
+  'Thera -> k162 path, not Gatecheck',
+  decoyPanels + inspectorWith('', 'Thera', 'Thera') + intelPanel('31000005', 'Thera'),
+  { name: 'Thera', systemId: '31000005' }
+);
+
+// The Thera check is an exact-name match, so a k-space system whose name merely
+// contains it must not be dragged along.
+run(
+  'Theran-sounding k-space name -> still Gatecheck',
+  decoyPanels + inspectorWith('', 'Otherakoun', 'Otherakoun') + intelPanel('30000144', 'Otherakoun'),
+  { name: 'Otherakoun' }
+);
+
+// A k-space system must NOT pick up a systemId even when the Intel panel is
+// showing one — it routes to Gatecheck by name, and an id in the result would
+// silently send it to k162 instead.
+run(
+  'k-space system with Intel panel open -> name only, no system id',
+  decoyPanels + inspectorWith('', 'Perimeter', 'Perimeter') + intelPanel('30000144', 'Perimeter'),
+  { name: 'Perimeter' }
+);
+
+// The id lives only in the Intel panel, so hiding it is a hard failure for
+// J-space. Falling back to Gatecheck here would open a route that cannot exist.
+run(
+  'J-code system with Intel panel hidden -> no-intel',
+  decoyPanels + inspectorWith('', 'J123456', 'J123456'),
+  { error: 'no-intel' }
+);
+
+// WHY: EVEEYE's query string is the other id carrier. If a future Aperture drops
+// the zKill link, this is the one that keeps the feature alive.
+run(
+  'J-code system, only the EVEEYE link present -> id from the query string',
+  decoyPanels +
+    inspectorWith('', 'J123456', 'J123456') +
+    `<div class="react-grid-item"><button aria-label="Hide Intel"></button>
+       <a href="https://anoik.is/systems/J123456">Anoik</a>
+       <a href="https://eveeye.com/?system=31000376">EVEEYE</a></div>`,
+  { name: 'J123456', systemId: '31000376' }
+);
+
+// Name-only links carry no id. Must fail loudly rather than route somewhere wrong.
+run(
+  'J-code system, Intel panel with no id-bearing link -> no-intel',
+  decoyPanels +
+    inspectorWith('', 'J123456', 'J123456') +
+    `<div class="react-grid-item"><button aria-label="Hide Intel"></button>
+       <a href="https://anoik.is/systems/J123456">Anoik</a></div>`,
+  { error: 'no-intel' }
 );
 
 run('nothing selected -> no-selection', decoyPanels + inspectorEmpty, { error: 'no-selection' });

@@ -1,9 +1,15 @@
 ReadMe:
 
-EVE Gatecheck Linker — v2.3 — Last updated 2026-07-26
+EVE Gatecheck Linker — v2.5 — Last updated 2026-08-25
 
-This extension uses Aperture to open EVE Gatecamp Check for a system, routed to
-the trade hub of your choice (Jita by default).
+This extension uses Aperture to open a check for whichever system you have
+selected:
+
+- Known space: EVE Gatecamp Check, routed to the trade hub of your choice
+  (Jita by default).
+- Wormhole space (any J-code system, plus Thera): k162 for that system instead.
+  Wormholes have no gates, so a gatecamp route to a trade hub does not exist for
+  them.
 
 It works by reading whichever system you have selected on your Aperture map. It
 takes the real system name from the Inspector panel, so it still works correctly
@@ -26,13 +32,19 @@ To use the extension:
    Aperture itself, not part of this extension — you turn it on inside Aperture
    from Panels -> Inspector. This extension reads the selected system's real
    name out of that panel, so it cannot work while the panel is hidden.
-3) Click the system you want to check
-4) Click the logo for the extension
+3) If you check wormhole systems, also turn on Aperture's Intel panel
+   (Panels -> Intel). k162 identifies a system by its id number rather than its
+   name, and the Intel panel is the only place Aperture shows it. Known-space
+   systems do not need this panel.
+4) Click the system you want to check
+5) Click the logo for the extension
 
-If no system is selected, or Aperture's Inspector panel is hidden, the extension
-will show a notification telling you what to fix instead of opening a tab.
+If no system is selected, if Aperture's Inspector panel is hidden, or if you pick
+a wormhole system while the Intel panel is hidden, the extension will show a
+notification telling you what to fix instead of opening a tab.
 
-To change the destination hub:
+To change the destination hub (known space only — wormhole systems always go to
+k162, which has no hub setting):
 1) Right-click the extension's logo and choose Options (or open Extensions ->
    Manage Extensions -> this extension -> Extension options)
 2) Pick Jita, Amarr, Dodixie, Hek or Rens from the drop-down
