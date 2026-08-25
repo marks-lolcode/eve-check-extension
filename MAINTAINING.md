@@ -1,6 +1,6 @@
 # Maintaining EVE Gatecheck Linker
 
-`MAINTAINING.md` — v1.3 — Last updated 2026-07-26
+`MAINTAINING.md` — v1.6 — Last updated 2026-08-25
 
 For anyone changing this extension. End-user install/usage lives in `readme.txt`.
 
@@ -25,11 +25,15 @@ nothing but store one string.
 2. You click the extension's toolbar button.
 3. `chrome.action.onClicked` fires; `chrome.scripting.executeScript` injects
    `readSelectedSystem` into the page.
-4. That function reads the system's real name out of the Inspector and returns
-   `{ name }` or `{ error }`.
-5. The service worker reads the destination hub from storage and opens
-   `https://eve-gatecheck.space/eve/#<system>:<hub>:shortest`, or shows a
-   notification explaining what went wrong.
+4. That function reads the system's real name out of the Inspector. For a
+   k-space system it returns `{ name }`. For a J-space one it also reads the EVE
+   solar system id out of the Intel panel and returns `{ name, systemId }`.
+   Either way, a failure comes back as `{ error }`.
+5. The service worker opens the right destination, or shows a notification
+   explaining what went wrong:
+   - `systemId` present → `https://k-162.space/?system=<id>`
+   - otherwise → `https://eve-gatecheck.space/eve/#<system>:<hub>:shortest`,
+     with the hub read from storage.
 
 There is no content script and no popup. `chrome.action.onClicked` only fires when
 no `default_popup` is set, and `executeScript` returns the scanner's value
@@ -42,6 +46,35 @@ it and runs it in the page. **It therefore cannot close over anything** — no
 imports, no outer constants, no helpers. It must stay entirely self-contained.
 `getDestination()` is used by `openGatecheck`, which runs in the service worker,
 not in the page.
+
+### Why J-space splits off
+
+Wormhole systems have no stargates, so a Gatecheck route between one and a trade
+hub does not exist — the old build opened a dead page for every J-code. k162 is
+the wormhole-side equivalent, and it keys on the **EVE solar system id**, not the
+name.
+
+That id is the catch. The Inspector never renders it; Aperture's `data-id` is a
+row id in its own database, not an EVE id. The Intel panel's outbound links are
+the only place on the page that carries it, so **J-space routing needs two panels
+open, not one.** With Intel hidden, the scanner returns `no-intel` rather than
+falling back to Gatecheck — a Gatecheck link for a J-code is wrong, not merely
+imperfect, so there is nothing to fall back to.
+
+Detection is `/^J\d{6}$/` against the real name, **or** the exact name `Thera`.
+The regex covers ordinary wormholes and drifter systems. Thera needs the extra
+clause because it is the one wormhole system CCP gave a real name instead of a
+J-code — it is just as gateless, so a Gatecheck route is just as meaningless.
+The match is exact equality, not a substring: k-space names containing `Thera`
+must keep going to Gatecheck.
+
+Both branches take the same path from there, so Thera needs the Intel panel like
+any other wormhole. Nothing is hardcoded — the id comes off the page, not from a
+table in this repo.
+
+If another gateless system turns up (Zarzakh is the obvious candidate — reached
+by filament and Turnur rather than by gate, and untested here), it is one more
+clause in the same condition.
 
 ## Permissions
 
@@ -105,6 +138,8 @@ Everything the extension needs from Aperture's page. If one of these changes, we
 | `input[data-slot="input"]` next to it | Same flex wrapper as the label | The alias field itself. |
 | **`.placeholder` of that input** | | **The real system name.** See below. |
 | Text `Select a system, connection, or note` | Inspector empty state | Distinguishes "nothing selected" from "a connection/note is selected", so the notification can be specific. |
+| `button[aria-label="Hide Intel"]` | Intel panel header | J-space only. Same anchoring trick as the Inspector, same fragility. |
+| An `<a>` matching `zkillboard.com/system/<id>` **or** `?system=<id>` | Intel panel links | J-space only. **The EVE solar system id**, which k162 needs and no other panel renders. Either link shape works, so losing one is survivable. |
 
 ### Why the placeholder, and not the map node
 
@@ -146,11 +181,79 @@ and it only renders for the *selected* system. Hence: selection required.
 `"Add destination…"`, Signature Search's `"Search…"`, and the Inspector's *own*
 Tag input (`placeholder="—"`). Always go through the panel.
 
-**Do not add a `card-title` fallback.** It looks tempting when the Alias input is
-missing, but it renders the *alias* for an aliased system and a *connection heading*
-when a connection is selected — so it hands back a non-system name and opens a bogus
-route, defeating the `not-a-system` check. An absent Alias input is a hard failure
-on purpose. Failing loudly beats guessing wrong.
+**Do not add a `card-title` fallback.** At rc.14 the card title happened to hold the
+real name even for an aliased system — but it renders a *connection heading* when a
+connection is selected, and nothing defines it as a name field, so it is one Aperture
+refactor away from holding the alias. Falling back to it hands back a non-system name
+and opens a bogus route, defeating the `not-a-system` check. An absent Alias input is
+a hard failure on purpose. Failing loudly beats guessing wrong.
+
+## What Aperture's panels actually expose
+
+Field inventory taken live against `ap.dkvc.space` on 2026-08-25, with wormhole
+system `J160941` selected and aliased to `Florida` (tag `🐊`). Nothing here is
+read by the extension today — it is the menu you are choosing from if a future
+feature needs more than the name, and the reference for spotting what changed
+after an Aperture update.
+
+Panels are addressed the same way the scanner addresses the Inspector: find
+`button[aria-label="Hide <Panel>"]`, then `.closest('.react-grid-item')`. Every
+panel in this layout follows that pattern — Map, Signatures, Inspector, Routes,
+Intel, Structures, Kill Statistics, System Graph, System Killboard, Tags,
+Eve-Scout, Signature Search.
+
+### Inspector
+
+Anchor: `button[aria-label="Hide Inspector"]`. Renders only for the current
+selection; empty state reads `Select a system, connection, or note`.
+
+| Field | Where | Live value in the sample |
+|---|---|---|
+| Card title | `[data-slot="card-title"]` | `J160941` — the **real name**, see the note below |
+| Status | `[data-slot="select-trigger"] [data-slot="select-value"]`, plus a hidden `input` carrying the same value | `friendly` |
+| Alias | `span` reading `Alias`, then `input[data-slot="input"]` | `placeholder="J160941"` (real name), `value="Florida"` (alias) |
+| Tag | `span` reading `Tag`, then `input[data-slot="input"]` | `placeholder="—"`, `value="🐊"` |
+| Intel notes | `textarea[placeholder="Notes are committed on blur."]` | free-text corp notes, kilobytes of it |
+| Locked | `label > input[type=checkbox]`, `span` `Locked`, `span` `by <character name>` | locked by a named character |
+| Set rally | `button[data-slot="button"]` | — |
+| Remove | `button[data-slot="button"]`, gated by `span` `Unlock to remove` | — |
+
+No links, no images, and **no security, class, region, or jump count** — those are
+not in the Inspector at all. Class and statics live on the map node
+(`.react-flow__node`), whose text for the sample reads
+`14 | C2 | 🐊 | Florida | C3 | H` — jumps, class, tag, **alias**, statics — and
+whose `data-id` is `1`, an Aperture row id. Region and security live in the Intel
+panel, below.
+
+### Intel
+
+Anchor: `button[aria-label="Hide Intel"]`. Follows the same selection as the
+Inspector.
+
+| Field | Where | Live value in the sample |
+|---|---|---|
+| Region | `dl > dt` `Region` + `dd` | `B-R00004` |
+| Constellation | `dt` `Const.` + `dd` | `B-C00023` |
+| Security | `dt` `Security` + `dd > span` | `-1.0` |
+| Sovereignty | bare `<p>` | `No sovereignty data.` |
+| EVE-Scout | `span` `EVE-Scout` + `span` | `No Thera / Turnur hits.` |
+| DOTLAN | `a` | `evemaps.dotlan.net/map/B-R00004/J160941` |
+| EVEEYE | `a` | `eveeye.com/?system=31000376` |
+| Anoik | `a` | `anoik.is/systems/J160941` |
+| zKill | `a` | `zkillboard.com/system/31000376/` |
+
+**The two id links are load-bearing now, not spare parts.** `?system=<id>` (EVEEYE)
+and `/system/<id>/` (zKill) are what J-space routing reads; lose both and every
+J-code selection turns into a `no-intel` notification. The name links (DOTLAN,
+Anoik) remain unused — they are the fallback source step 3 of
+[the update playbook](#when-aperture-updates-and-it-breaks) points at, should the
+Alias placeholder ever stop separating name from alias. None of the four is
+alias-polluted.
+
+Two things to know before leaning on it. The panel renders no system name in its
+own text — the names exist only inside `href` attributes, so a fallback means URL
+parsing, not text reading. And the panel offers no anchor of its own beyond the
+hide button, so the same `aria-label` fragility applies twice over.
 
 ## Rejected design: reading connections off the map
 
@@ -221,8 +324,13 @@ Automated tests use fixtures, so they cannot tell you Aperture changed its DOM.
 
 | Do this | Expect |
 |---|---|
-| Select a normal system, click the button | Gatecheck opens with that system |
+| Select a normal k-space system, click the button | Gatecheck opens with that system |
 | **Alias a system, select it, click** | Gatecheck opens the **real** name, not the alias |
+| **Select a J-code system, click** | **k162 opens on that system's id — not Gatecheck** |
+| **Select Thera, click** | k162 opens on Thera's id — the one named wormhole system |
+| **Alias a J-code system, select it, click** | k162 opens on the **real** system's id |
+| Hide the Intel panel, select a J-code system, click | Notification, no tab |
+| Hide the Intel panel, select a k-space system, click | Gatecheck opens as normal — k-space never touches Intel |
 | Select nothing, click | Notification, no tab |
 | Select a *connection*, click | Notification, no tab |
 | Hide the Inspector panel, click | Notification, no tab |
