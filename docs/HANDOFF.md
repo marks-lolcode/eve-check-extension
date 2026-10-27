@@ -1,6 +1,12 @@
 # Handoff
 
-State after v2.6 (branch `fix/harden-scanner-docs`, merged to `main`). Tests: `npm test`, 13/13 passing.
+State after v2.7 (branch `feat/firefox-support`, merged to `main`; v2.6 hardening is already released). Tests: `npm test`, 13/13 passing. `npx web-ext lint`: 0 errors, 1 expected warning (Firefox ignores `service_worker`).
+
+## Firefox support
+
+- One manifest serves both browsers: `background` lists `service_worker` (Chrome) and `scripts` (Firefox). Each ignores the other key.
+- `browser_specific_settings.gecko.id` is `eve-gatecheck-linker@users.noreply.github.com`. It is permanent once published to AMO and `storage.sync` needs it. Do not change it.
+- `background.js` and the options page needed no code changes.
 
 ## Non-obvious decisions
 
@@ -10,6 +16,8 @@ State after v2.6 (branch `fix/harden-scanner-docs`, merged to `main`). Tests: `n
 - The default hub (`Jita`) is named in `background.js` `DEFAULT_DESTINATION` and the first `<option>` in `options.html` (`options.js` derives its fallback from it). Keep them in step.
 
 ## Not verified
+
+- The extension has not been loaded in Firefox, and Chrome was not re-checked after the manifest change. No AMO submission or signing has happened.
 
 - Nothing was run in a real browser or against live Aperture, Gatecheck or k162. Only the jsdom fixtures were run.
 - No tests cover the new name allowlist or the Intel host pinning. A real system name with a character outside the allowlist would now show "not a system". Check against live data (apostrophes, any non-ASCII names).

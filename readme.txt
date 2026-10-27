@@ -1,6 +1,6 @@
 ReadMe:
 
-EVE Gatecheck Linker — v2.6 — Last updated 2026-10-27
+EVE Gatecheck Linker — v2.7 — Last updated 2026-10-27
 
 This extension uses Aperture to open a check for whichever system you have
 selected:
@@ -25,6 +25,11 @@ Instillation Instructions:
    manifest.json)
 6) Click Select Folder
 7) The extension should be installed
+
+Firefox: the same folder works. Open about:debugging#/runtime/this-firefox,
+click "Load Temporary Add-on...", and pick manifest.json. Temporary add-ons are
+removed when Firefox restarts; a permanent install needs a signed build from
+addons.mozilla.org.
 
 To use the extension:
 1) Open your Aperture map

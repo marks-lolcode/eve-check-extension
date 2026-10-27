@@ -1,6 +1,6 @@
 {
   "name": "eve-check-extension",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "description": "Chrome extension: opens EVE Gatecheck (or k162 for wormhole systems) for the system selected on your Aperture map.",
   "private": true,
   "scripts": {
