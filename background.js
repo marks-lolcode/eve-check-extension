@@ -1,5 +1,5 @@
 /* ========================================================================
-   File: background.js — v2.5 — Last updated 2026-08-25
+   File: background.js — v2.6 — Last updated 2026-10-27
    Purpose:
      1) On toolbar click, inject a scanner into the active tab that reads the
         currently-selected system out of Aperture's Inspector panel.
@@ -38,7 +38,16 @@
 // that is not on this list (stale sync data, hand-edited storage) must never
 // reach the URL. If you add a hub, update options.html too.
 const HUBS = ['Jita', 'Amarr', 'Dodixie', 'Hek', 'Rens'];
+// Must match the first <option> in options.html, which options.js uses as its
+// own fallback.
 const DEFAULT_DESTINATION = 'Jita';
+
+// Flip to true to trace every click in the service worker console. Off by
+// default: the traces include the scanned system name.
+const DEBUG = false;
+const debug = (...args) => {
+  if (DEBUG) console.log(...args);
+};
 
 async function getDestination() {
   try {
@@ -69,13 +78,25 @@ function readSelectedSystem() {
   // WHAT: the "Alias" label span shares a flex wrapper with its input.
   // WHY: scoping matters — a loose input[placeholder] query would match the
   // Routes "Start system…" field or the Inspector's own Tag input ("—").
-  const aliasLabel = [...panel.querySelectorAll('span')].find(
-    (s) => s.textContent.trim() === 'Alias'
-  );
+  let aliasLabel = null;
+  for (const s of panel.querySelectorAll('span')) {
+    if (s.textContent.trim() === 'Alias') {
+      aliasLabel = s;
+      break;
+    }
+  }
   const aliasInput = aliasLabel?.parentElement?.querySelector('input[data-slot="input"]');
   const name = aliasInput?.placeholder?.trim();
 
   if (name) {
+    // WHY an allowlist: the name comes from the page DOM and goes into the
+    // Gatecheck URL fragment unencoded. A `#`, `:`, `/` or `?` would let the
+    // page rewrite the route. EVE system names are letters, digits, hyphens,
+    // spaces and apostrophes. Anything else is not a system.
+    if (!/^[A-Za-z0-9' -]{1,40}$/.test(name)) {
+      return { error: 'not-a-system' };
+    }
+
     // WHAT: wormhole systems route to k162, not Gatecheck — J-codes (ordinary
     // wormholes and drifter systems) plus Thera, which is J-space with a
     // hand-given name rather than a J-code. Both are gateless, so Gatecheck has
@@ -91,11 +112,32 @@ function readSelectedSystem() {
       // security as text, but never the solar system id — it appears only
       // inside its outbound links (zKill's path, EVEEYE's query string).
       // Aperture's own data-id is a row id and cannot be used here.
-      const match = [...(intel?.querySelectorAll('a') ?? [])]
-        .map((a) => a.href.match(/zkillboard\.com\/system\/(\d+)/) || a.href.match(/[?&]system=(\d+)/))
-        .find(Boolean);
+      // WHY parse the URL: an unanchored regex on the raw href would accept
+      // `evil.com/zkillboard.com/system/1`. The page controls these links, so
+      // pin the host and take only a bounded run of digits. Either site's link
+      // works; the first one found wins.
+      let systemId = null;
+      for (const a of intel?.querySelectorAll('a') ?? []) {
+        let url;
+        try {
+          url = new URL(a.href);
+        } catch {
+          continue;
+        }
+        const host = url.hostname.replace(/^www\./, '');
+        let id = null;
+        if (host === 'zkillboard.com') {
+          id = url.pathname.match(/^\/system\/(\d{1,10})(?:\/|$)/)?.[1];
+        } else if (host === 'eveeye.com') {
+          id = url.searchParams.get('system');
+        }
+        if (id && /^\d{1,10}$/.test(id)) {
+          systemId = id;
+          break;
+        }
+      }
 
-      return match ? { name, systemId: match[1] } : { error: 'no-intel' };
+      return systemId ? { name, systemId } : { error: 'no-intel' };
     }
 
     return { name };
@@ -130,10 +172,11 @@ function notify(message) {
   });
 }
 
-async function openGatecheck(systemName) {
-  const system = String(systemName).trim();
-  const destination = await getDestination();
-  const gatecheckUrl = `https://eve-gatecheck.space/eve/#${system}:${destination}:shortest`;
+// WHY no encodeURIComponent on the name: readSelectedSystem has already limited
+// it to letters, digits, hyphens, spaces and apostrophes, and Gatecheck reads
+// the fragment as plain text. `destination` is checked against HUBS.
+function openGatecheck(systemName, destination) {
+  const gatecheckUrl = `https://eve-gatecheck.space/eve/#${systemName}:${destination}:shortest`;
 
   openTab(gatecheckUrl, 'Gatecheck');
 }
@@ -143,53 +186,57 @@ function openK162(systemId) {
 }
 
 function openTab(url, label) {
-  console.log(`[background] Opening ${label}:`, url);
+  debug(`[background] Opening ${label}:`, url);
   chrome.tabs.create({ url }, (tab) => {
     if (chrome.runtime.lastError) {
       console.error(`[background] tabs.create (${label}) error:`, chrome.runtime.lastError);
     } else {
-      console.log(`[background] ${label} tab created with id:`, tab?.id);
+      debug(`[background] ${label} tab created with id:`, tab?.id);
     }
   });
 }
 
-chrome.action.onClicked.addListener((tab) => {
-  console.log('[background] action.onClicked: injecting scanner into tab', tab?.id);
+chrome.action.onClicked.addListener(async (tab) => {
+  debug('[background] action.onClicked: injecting scanner into tab', tab?.id);
 
+  let results;
+  let destination;
   try {
-    chrome.scripting.executeScript(
-      {
+    // The storage read does not depend on the scan, so run them together.
+    // getDestination() never rejects, so only executeScript can throw here.
+    [results, destination] = await Promise.all([
+      chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: readSelectedSystem
-      },
-      (results) => {
-        if (chrome.runtime.lastError) {
-          console.error('[background] executeScript failed:', chrome.runtime.lastError);
-          notify('Could not read the page. Is this an Aperture map tab?');
-          return;
-        }
-
-        const result = results?.[0]?.result;
-        console.log('[background] Scanner returned:', result);
-
-        if (result?.systemId) {
-          openK162(result.systemId);
-          return;
-        }
-
-        if (result?.name) {
-          openGatecheck(result.name);
-          return;
-        }
-
-        const message = ERROR_MESSAGES[result?.error] ?? 'Could not find a selected system.';
-        console.warn('[background] No system read:', result?.error);
-        notify(message);
-      }
-    );
+      }),
+      getDestination()
+    ]);
   } catch (err) {
-    console.error('[background] Unexpected error during injection:', err);
+    console.error('[background] executeScript failed:', err);
+    notify('Could not read the page. Is this an Aperture map tab?');
+    return;
   }
+
+  // The result is structured-clone data from the page's context: check its
+  // shape rather than trusting it.
+  const result = results?.[0]?.result;
+  debug('[background] Scanner returned:', result);
+
+  if (typeof result?.systemId === 'string' && /^\d{1,10}$/.test(result.systemId)) {
+    openK162(result.systemId);
+    return;
+  }
+
+  if (typeof result?.name === 'string' && result.name) {
+    openGatecheck(result.name, destination);
+    return;
+  }
+
+  // A null or malformed scanner result has no `error` key and lands on the
+  // generic message.
+  const message = ERROR_MESSAGES[result?.error] ?? 'Could not find a selected system.';
+  console.warn('[background] No system read:', result?.error);
+  notify(message);
 });
 
 /* ============================== End of file: background.js ============================== */
