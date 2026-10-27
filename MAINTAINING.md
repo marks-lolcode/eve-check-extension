@@ -1,6 +1,6 @@
 # Maintaining EVE Gatecheck Linker
 
-`MAINTAINING.md` — v1.6 — Last updated 2026-08-25
+`MAINTAINING.md` — v1.7 — Last updated 2026-10-27
 
 For anyone changing this extension. End-user install/usage lives in `readme.txt`.
 
@@ -358,8 +358,10 @@ including the scanner's raw return value.
 | `options.html` / `options.css` / `options.js` | Options page. Destination hub only. |
 | `manifest.json` | MV3, shared by Chrome and Firefox. No `default_popup` — that is what makes `action.onClicked` fire. `background` lists both `service_worker` (Chrome) and `scripts` (Firefox); each browser ignores the other key and warns about it. `browser_specific_settings.gecko.id` is required for `storage.sync` on Firefox. Check with `npx web-ext lint`. |
 | `assets/icon*.png` | 16/32/48/128. Also the notification icon. |
+| `assets/screenshot-1280x800.png` | Chrome Web Store listing screenshot. Not loaded by the extension; leave it out of the upload zip. |
 | `tests/scanner.test.js` | jsdom tests for the scanner. |
 | `readme.txt` | End-user install/usage. |
+| `PRIVACY.md` | Privacy policy. Its GitHub URL on `main` is the store listing's privacy link, so keep it in step with what `background.js` reads, opens and stores. |
 | `package.json` / `package-lock.json` | Dev-only: `jsdom` for the tests (`npm test`). Nothing ships from here. |
 | `LICENSE` | MIT. |
 | `MAINTAINING.md` | This file. |

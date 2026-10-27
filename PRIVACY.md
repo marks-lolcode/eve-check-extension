@@ -1,6 +1,6 @@
 # Privacy Policy — EVE Gatecheck Linker
 
-Last updated: 2026-10-27
+`PRIVACY.md` — v1.0 — Last updated 2026-10-27
 
 EVE Gatecheck Linker ("the extension") is a browser extension that opens a gatecamp check for the solar system selected on your Aperture map. This policy explains what data the extension handles.
 
@@ -11,7 +11,7 @@ Only when you click the extension's toolbar icon, the extension reads the follow
 - The name of the solar system selected in Aperture's Inspector panel.
 - For wormhole systems, that system's numeric ID from links in Aperture's Intel panel.
 
-It reads nothing else from the page, and nothing from any other tab.
+To find those, it looks at the labels and text of the Inspector panel (for example, to tell whether anything is selected) and at the link addresses in the Intel panel. Everything except the system name and ID is discarded immediately. It never reads other parts of the page, and never reads any other tab.
 
 ## Where that data goes
 

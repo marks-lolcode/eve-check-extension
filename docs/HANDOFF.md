@@ -15,6 +15,12 @@ State after v2.7 (branch `feat/firefox-support`, merged to `main`; v2.6 hardenin
 - No origin check before injecting: it would need the `tabs` permission (history warning). The scanner returns `no-panel` on non-Aperture pages instead.
 - The default hub (`Jita`) is named in `background.js` `DEFAULT_DESTINATION` and the first `<option>` in `options.html` (`options.js` derives its fallback from it). Keep them in step.
 
+## Chrome Web Store listing
+
+- `PRIVACY.md` is the privacy policy. The listing links to `https://github.com/marks-lolcode/eve-check-extension/blob/main/PRIVACY.md`, so do not move or rename it.
+- Data disclosure answered: only "Website content" (the system name/ID read from the page and sent in the Gatecheck/k162 URL). No remote code.
+- `assets/screenshot-1280x800.png` is the store screenshot. Build the upload zip without `tests/`, `node_modules/`, `.claude/`, `docs/` and the screenshot. `tests/scanner.test.js` uses `new Function`, which a reviewer could flag as remote code.
+
 ## Not verified
 
 - The extension has not been loaded in Firefox, and Chrome was not re-checked after the manifest change. No AMO submission or signing has happened.
