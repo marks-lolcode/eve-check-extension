@@ -1,11 +1,11 @@
 ReadMe:
 
-EVE Gatecheck Linker — v2.5 — Last updated 2026-08-25
+EVE Gatecheck Linker — v2.6 — Last updated 2026-10-27
 
 This extension uses Aperture to open a check for whichever system you have
 selected:
 
-- Known space: EVE Gatecamp Check, routed to the trade hub of your choice
+- Known space: EVE Gatecheck, routed to the trade hub of your choice
   (Jita by default).
 - Wormhole space (any J-code system, plus Thera): k162 for that system instead.
   Wormholes have no gates, so a gatecamp route to a trade hub does not exist for
@@ -52,6 +52,14 @@ k162, which has no hub setting):
 
 The choice is stored in your Chrome profile and syncs with it. If you never
 touch it, routes go to Jita as before.
+
+Permissions Chrome asks for, and why:
+- activeTab: lets the extension read the one tab you click it on, only at the
+  moment you click. It never sees your other tabs.
+- scripting: runs the small scanner that reads the selected system from
+  Aperture's page.
+- notifications: shows the "what to fix" messages described above.
+- storage: remembers your chosen hub.
 
 Note: this version targets Aperture only. Pathfinder support was removed in
 v2.0 — use v1 if you still need it.

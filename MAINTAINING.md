@@ -105,9 +105,13 @@ of these stop being true — price that in before you build it.
 
 One key: `destination` in `chrome.storage.sync`, holding a hub name string.
 Unset, unreadable, or not on the `HUBS` list → `Jita`. There is no
-`onInstalled` seeding step, deliberately: the default lives in exactly one
-place (the fallback in `getDestination`), so a profile that never opens the
-options page and a profile whose sync data is stale behave identically.
+`onInstalled` seeding step, deliberately: nothing is written until the user
+picks a hub, so a profile that never opens the options page and a profile whose
+sync data is stale behave identically.
+
+The default (`Jita`) is named in two places that must agree: `DEFAULT_DESTINATION`
+in `background.js` and the first `<option>` in `options.html`, which `options.js`
+reads as its own fallback.
 
 The hub list exists in three places and they must agree:
 
@@ -191,10 +195,10 @@ a hard failure on purpose. Failing loudly beats guessing wrong.
 ## What Aperture's panels actually expose
 
 Field inventory taken live against `ap.dkvc.space` on 2026-08-25, with wormhole
-system `J160941` selected and aliased to `Florida` (tag `🐊`). Nothing here is
-read by the extension today — it is the menu you are choosing from if a future
-feature needs more than the name, and the reference for spotting what changed
-after an Aperture update.
+system `J160941` selected and aliased to `Florida` (tag `🐊`). The extension
+reads only the Alias placeholder and the Intel panel's id links; everything else
+here is the menu you are choosing from if a future feature needs more than the
+name, and the reference for spotting what changed after an Aperture update.
 
 Panels are addressed the same way the scanner addresses the Inspector: find
 `button[aria-label="Hide <Panel>"]`, then `.closest('.react-grid-item')`. Every
@@ -356,12 +360,16 @@ including the scanner's raw return value.
 | `assets/icon*.png` | 16/32/48/128. Also the notification icon. |
 | `tests/scanner.test.js` | jsdom tests for the scanner. |
 | `readme.txt` | End-user install/usage. |
+| `package.json` / `package-lock.json` | Dev-only: `jsdom` for the tests (`npm test`). Nothing ships from here. |
+| `LICENSE` | MIT. |
 | `MAINTAINING.md` | This file. |
 
 ## Conventions
 
 - Version + date header on every file, per the repo owner's standard:
   `// <file> — vX.Y — Last updated YYYY-MM-DD`. Bump on every functional change.
+  A release bump also changes `version` in `manifest.json` (`X.Y`), `package.json`
+  and both entries in `package-lock.json` (`X.Y.0`), and the `readme.txt` header.
 - Keep the `[background]` log prefix and the `chrome.runtime.lastError` checks
   after every `chrome.*` callback — they are the only debugging surface a service
   worker has.
