@@ -1,11 +1,20 @@
 {
   "manifest_version": 3,
   "name": "EVE Gatecheck Linker",
-  "version": "2.6",
+  "version": "2.7",
   "description": "Opens an EVE Gatecheck route to your chosen trade hub, or a k162 page for wormhole systems, for the system selected on your Aperture map.",
   "permissions": ["activeTab", "scripting", "notifications", "storage"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "eve-gatecheck-linker@users.noreply.github.com",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
   },
   "options_ui": {
     "page": "options.html"

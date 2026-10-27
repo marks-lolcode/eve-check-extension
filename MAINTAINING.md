@@ -356,7 +356,7 @@ including the scanner's raw return value.
 |---|---|
 | `background.js` | Scanner + service worker. |
 | `options.html` / `options.css` / `options.js` | Options page. Destination hub only. |
-| `manifest.json` | MV3. No `default_popup` — that is what makes `action.onClicked` fire. |
+| `manifest.json` | MV3, shared by Chrome and Firefox. No `default_popup` — that is what makes `action.onClicked` fire. `background` lists both `service_worker` (Chrome) and `scripts` (Firefox); each browser ignores the other key and warns about it. `browser_specific_settings.gecko.id` is required for `storage.sync` on Firefox. Check with `npx web-ext lint`. |
 | `assets/icon*.png` | 16/32/48/128. Also the notification icon. |
 | `tests/scanner.test.js` | jsdom tests for the scanner. |
 | `readme.txt` | End-user install/usage. |
